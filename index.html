@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>git-play</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===== APP SHELL ===== -->
+  <div id="app">
+
+    <!-- Top bar -->
+    <header id="topbar">
+      <button id="btn-back" class="icon-btn hidden" aria-label="Go back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <div id="topbar-title">
+        <span class="logo-text">git<span class="accent">play</span></span>
+      </div>
+      <div class="topbar-right"></div>
+    </header>
+
+    <!-- ===== SCREENS ===== -->
+    <main id="screens">
+
+      <!-- HOME SCREEN -->
+      <section id="screen-home" class="screen active">
+        <div class="screen-header">
+          <h1 class="screen-title">Your Library</h1>
+          <p class="screen-subtitle">Music from the vault</p>
+        </div>
+        <div id="album-grid" class="album-grid">
+          <!-- Albums injected here -->
+        </div>
+        <div id="home-loading" class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading your music…</p>
+        </div>
+        <div id="home-error" class="error-state hidden">
+          <div class="error-icon">⚠</div>
+          <p id="home-error-msg">Could not load library.</p>
+          <button class="btn-retry" onclick="App.loadIndex()">Retry</button>
+        </div>
+      </section>
+
+      <!-- LIBRARY SCREEN -->
+      <section id="screen-library" class="screen">
+        <div class="screen-header">
+          <h1 class="screen-title">Search</h1>
+          <div class="search-bar">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="search" id="search-input" placeholder="Artists, albums, tracks…" autocomplete="off" />
+          </div>
+        </div>
+        <div id="library-list" class="library-list">
+          <!-- Library items injected -->
+        </div>
+      </section>
+
+      <!-- ALBUM SCREEN (pushes from right) -->
+      <section id="screen-album" class="screen slide-screen">
+        <div id="album-hero">
+          <div id="album-cover-wrap">
+            <img id="album-cover" src="" alt="Album cover" />
+            <div class="cover-shadow"></div>
+          </div>
+          <div id="album-meta">
+            <h2 id="album-title-text"></h2>
+            <p id="album-artist-text"></p>
+            <p id="album-year-text"></p>
+          </div>
+        </div>
+        <div id="track-list-wrap">
+          <div class="track-list-header">
+            <span>Tracks</span>
+            <button id="btn-play-all" class="btn-play-all">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Play All
+            </button>
+          </div>
+          <ul id="track-list">
+            <!-- Track items injected -->
+          </ul>
+          <div id="album-loading" class="loading-state hidden">
+            <div class="spinner"></div>
+            <p>Loading tracks…</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ===== BOTTOM NAV ===== -->
+    <nav id="bottom-nav">
+      <button class="nav-btn active" data-screen="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-btn" data-screen="library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>Search</span>
+      </button>
+    </nav>
+
+    <!-- ===== MINI PLAYER ===== -->
+    <div id="mini-player" class="hidden">
+      <div id="mini-player-inner" onclick="Player.expandPlayer()">
+        <img id="mini-cover" src="" alt="" />
+        <div id="mini-info">
+          <span id="mini-title">—</span>
+          <span id="mini-artist">—</span>
+        </div>
+        <div id="mini-controls" onclick="event.stopPropagation()">
+          <button id="mini-prev" class="icon-btn sm" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+          <button id="mini-play" class="icon-btn play-btn-sm" aria-label="Play/Pause">
+            <svg id="mini-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </button>
+          <button id="mini-next" class="icon-btn sm" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="mini-progress-bar">
+        <div id="mini-progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- ===== FULL PLAYER OVERLAY ===== -->
+    <div id="full-player" class="hidden">
+      <div id="full-player-bg"></div>
+      <div id="full-player-content">
+
+        <!-- Handle -->
+        <div id="player-handle" onclick="Player.collapsePlayer()">
+          <div class="handle-bar"></div>
+        </div>
+
+        <!-- Header -->
+        <div id="player-header">
+          <button id="player-collapse" class="icon-btn" onclick="Player.collapsePlayer()" aria-label="Collapse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div id="player-header-info">
+            <span id="player-album-name"></span>
+          </div>
+          <button class="icon-btn" id="player-more" aria-label="More options">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Cover -->
+        <div id="player-cover-wrap">
+          <img id="player-cover" src="" alt="Now playing" />
+        </div>
+
+        <!-- Track info -->
+        <div id="player-info">
+          <div id="player-info-left">
+            <h3 id="player-track-title">—</h3>
+            <p id="player-track-artist">—</p>
+          </div>
+          <button id="player-like" class="icon-btn" aria-label="Like">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Seek -->
+        <div id="player-seek-wrap">
+          <div id="seek-bar-track">
+            <div id="seek-bar-fill"></div>
+            <div id="seek-thumb"></div>
+          </div>
+          <div id="seek-times">
+            <span id="seek-current">0:00</span>
+            <span id="seek-duration">0:00</span>
+          </div>
+        </div>
+
+        <!-- Main controls -->
+        <div id="player-controls">
+          <button id="ctrl-shuffle" class="icon-btn ctrl-side" aria-label="Shuffle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+              <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+            </svg>
+          </button>
+          <button id="ctrl-prev" class="icon-btn ctrl-main" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+          <button id="ctrl-play" class="icon-btn ctrl-play" aria-label="Play/Pause">
+            <svg id="ctrl-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </button>
+          <button id="ctrl-next" class="icon-btn ctrl-main" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+          <button id="ctrl-repeat" class="icon-btn ctrl-side" aria-label="Repeat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+              <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Volume (hidden on small screens, shown on desktop) -->
+        <div id="player-volume">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="vol-icon">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          </svg>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="vol-icon">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/>
+          </svg>
+        </div>
+
+        <!-- Track queue preview -->
+        <div id="player-queue">
+          <p class="queue-label">Next up</p>
+          <div id="queue-next-track">
+            <span id="queue-next-title">—</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /#app -->
+
+  <!-- Hidden audio element -->
+  <audio id="audio-el" preload="metadata"></audio>
+
+  <script src="js/api.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
