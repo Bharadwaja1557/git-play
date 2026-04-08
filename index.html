@@ -14,7 +14,6 @@
 </head>
 <body>
 
-  <!-- ===== APP SHELL ===== -->
   <div id="app">
 
     <!-- Top bar -->
@@ -33,43 +32,191 @@
     <!-- ===== SCREENS ===== -->
     <main id="screens">
 
-      <!-- HOME SCREEN -->
+      <!-- ══════════════════════════════════
+           HOME SCREEN
+      ══════════════════════════════════ -->
       <section id="screen-home" class="screen active">
-        <div class="screen-header">
-          <h1 class="screen-title">Your Library</h1>
-          <p class="screen-subtitle">Music from the vault</p>
+
+        <!-- Greeting -->
+        <div class="home-greeting">
+          <p id="greeting-text" class="greeting-text">Good evening</p>
+          <h1 class="screen-title">What's playing?</h1>
         </div>
-        <div id="album-grid" class="album-grid">
-          <!-- Albums injected here -->
+
+        <!-- Hero actions row -->
+        <div class="home-actions">
+          <button class="hero-action-btn" id="btn-shuffle-all">
+            <div class="hero-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+              </svg>
+            </div>
+            <span>Shuffle All</span>
+          </button>
+          <button class="hero-action-btn" id="btn-play-random-album">
+            <div class="hero-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/>
+              </svg>
+            </div>
+            <span>Random Album</span>
+          </button>
+          <button class="hero-action-btn" id="btn-play-recent">
+            <div class="hero-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <span>Resume Last</span>
+          </button>
         </div>
-        <div id="home-loading" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading your music…</p>
+
+        <!-- Recently Played -->
+        <div class="home-section" id="section-recents">
+          <div class="home-section-header">
+            <span class="home-section-title">Recently Played</span>
+          </div>
+          <div id="recents-list" class="recents-list">
+            <p class="empty-hint">Nothing yet — start playing something!</p>
+          </div>
         </div>
-        <div id="home-error" class="error-state hidden">
-          <div class="error-icon">⚠</div>
-          <p id="home-error-msg">Could not load library.</p>
-          <button class="btn-retry" onclick="App.loadIndex()">Retry</button>
+
+        <!-- All Albums -->
+        <div class="home-section">
+          <div class="home-section-header">
+            <span class="home-section-title">All Albums</span>
+            <span id="album-count" class="home-section-count"></span>
+          </div>
+          <div id="album-grid" class="album-grid"></div>
+          <div id="home-loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading your music…</p>
+          </div>
+          <div id="home-error" class="error-state hidden">
+            <div class="error-icon">⚠</div>
+            <p id="home-error-msg">Could not load library.</p>
+            <button class="btn-retry" onclick="App.loadIndex()">Retry</button>
+          </div>
         </div>
+
       </section>
 
-      <!-- LIBRARY SCREEN -->
-      <section id="screen-library" class="screen">
+      <!-- ══════════════════════════════════
+           SEARCH SCREEN
+      ══════════════════════════════════ -->
+      <section id="screen-search" class="screen">
         <div class="screen-header">
           <h1 class="screen-title">Search</h1>
+
+          <!-- Search input -->
           <div class="search-bar">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="search" id="search-input" placeholder="Artists, albums, tracks…" autocomplete="off" />
+            <input type="search" id="search-input" placeholder="Songs, artists, albums, years…" autocomplete="off" />
+            <button id="search-clear" class="search-clear hidden" aria-label="Clear">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Filter chips -->
+          <div class="filter-chips">
+            <button class="chip active" data-filter="all">All</button>
+            <button class="chip" data-filter="track">Tracks</button>
+            <button class="chip" data-filter="album">Albums</button>
+            <button class="chip" data-filter="artist">Artists</button>
+            <button class="chip" data-filter="year">Year</button>
           </div>
         </div>
-        <div id="library-list" class="library-list">
-          <!-- Library items injected -->
+
+        <!-- Browse state (no query) -->
+        <div id="search-browse">
+          <p class="search-browse-label">Browse by</p>
+          <div class="browse-grid">
+            <div class="browse-card" onclick="Search.browseByArtist()">
+              <div class="browse-card-icon">🎤</div>
+              <span>Artist</span>
+            </div>
+            <div class="browse-card" onclick="Search.browseByYear()">
+              <div class="browse-card-icon">📅</div>
+              <span>Year</span>
+            </div>
+            <div class="browse-card" onclick="Search.browseByAlbum()">
+              <div class="browse-card-icon">💿</div>
+              <span>Album</span>
+            </div>
+          </div>
         </div>
+
+        <!-- Results -->
+        <div id="search-results" class="hidden">
+          <div id="results-tracks-section" class="results-section hidden">
+            <p class="results-section-label">Tracks</p>
+            <ul id="results-tracks"></ul>
+          </div>
+          <div id="results-albums-section" class="results-section hidden">
+            <p class="results-section-label">Albums</p>
+            <div id="results-albums" class="results-albums-list"></div>
+          </div>
+          <p id="results-empty" class="results-empty hidden">No results found.</p>
+        </div>
+
+        <!-- Browse results (artist/year drill-down) -->
+        <div id="browse-results" class="hidden">
+          <div id="browse-results-header" class="browse-results-header">
+            <button class="browse-back-btn" onclick="Search.clearBrowse()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              <span id="browse-results-label"></span>
+            </button>
+          </div>
+          <div id="browse-results-list"></div>
+        </div>
+
       </section>
 
-      <!-- ALBUM SCREEN (pushes from right) -->
+      <!-- ══════════════════════════════════
+           LIBRARY SCREEN
+      ══════════════════════════════════ -->
+      <section id="screen-library" class="screen">
+        <div class="screen-header">
+          <h1 class="screen-title">Library</h1>
+          <p class="screen-subtitle">Your personal collection</p>
+        </div>
+
+        <!-- Quick stats -->
+        <div id="library-stats" class="library-stats"></div>
+
+        <!-- Liked songs shortcut -->
+        <div class="library-shortcut" id="liked-shortcut" onclick="Library.openLiked()">
+          <div class="library-shortcut-icon liked-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+          </div>
+          <div class="library-shortcut-info">
+            <span class="library-shortcut-title">Liked Songs</span>
+            <span class="library-shortcut-sub" id="liked-count">0 songs</span>
+          </div>
+          <svg class="library-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+
+        <!-- All albums list -->
+        <div class="library-section">
+          <div class="library-section-header">
+            <span>Albums</span>
+          </div>
+          <div id="library-albums-list" class="library-albums-list"></div>
+        </div>
+
+      </section>
+
+      <!-- ══════════════════════════════════
+           ALBUM SCREEN (slide in from right)
+      ══════════════════════════════════ -->
       <section id="screen-album" class="screen slide-screen">
         <div id="album-hero">
           <div id="album-cover-wrap">
@@ -90,13 +237,39 @@
               Play All
             </button>
           </div>
-          <ul id="track-list">
-            <!-- Track items injected -->
-          </ul>
+          <ul id="track-list"></ul>
           <div id="album-loading" class="loading-state hidden">
             <div class="spinner"></div>
             <p>Loading tracks…</p>
           </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════
+           LIKED SONGS SCREEN
+      ══════════════════════════════════ -->
+      <section id="screen-liked" class="screen slide-screen">
+        <div id="liked-hero">
+          <div class="liked-hero-cover">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+          </div>
+          <div id="liked-meta">
+            <h2>Liked Songs</h2>
+            <p id="liked-meta-count">0 songs</p>
+          </div>
+        </div>
+        <div id="liked-track-list-wrap">
+          <div class="track-list-header">
+            <span>Songs</span>
+            <button id="btn-play-liked" class="btn-play-all">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Play All
+            </button>
+          </div>
+          <ul id="liked-track-list"></ul>
+          <p id="liked-empty" class="empty-hint" style="padding:24px 16px;">Heart a song to see it here.</p>
         </div>
       </section>
 
@@ -135,11 +308,17 @@
         </svg>
         <span>Home</span>
       </button>
-      <button class="nav-btn" data-screen="library">
+      <button class="nav-btn" data-screen="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <span>Search</span>
+      </button>
+      <button class="nav-btn" data-screen="library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+        </svg>
+        <span>Library</span>
       </button>
     </nav>
 
@@ -147,13 +326,9 @@
     <div id="full-player" class="hidden">
       <div id="full-player-bg"></div>
       <div id="full-player-content">
-
-        <!-- Handle -->
         <div id="player-handle" onclick="Player.collapsePlayer()">
           <div class="handle-bar"></div>
         </div>
-
-        <!-- Header -->
         <div id="player-header">
           <button id="player-collapse" class="icon-btn" onclick="Player.collapsePlayer()" aria-label="Collapse">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -169,26 +344,20 @@
             </svg>
           </button>
         </div>
-
-        <!-- Cover -->
         <div id="player-cover-wrap">
           <img id="player-cover" src="" alt="Now playing" />
         </div>
-
-        <!-- Track info -->
         <div id="player-info">
           <div id="player-info-left">
             <h3 id="player-track-title">—</h3>
             <p id="player-track-artist">—</p>
           </div>
-          <button id="player-like" class="icon-btn" aria-label="Like">
+          <button id="player-like" class="icon-btn" aria-label="Like" onclick="Library.toggleLikeCurrentTrack()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
             </svg>
           </button>
         </div>
-
-        <!-- Seek -->
         <div id="player-seek-wrap">
           <div id="seek-bar-track">
             <div id="seek-bar-fill"></div>
@@ -199,8 +368,6 @@
             <span id="seek-duration">0:00</span>
           </div>
         </div>
-
-        <!-- Main controls -->
         <div id="player-controls">
           <button id="ctrl-shuffle" class="icon-btn ctrl-side" aria-label="Shuffle">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -224,8 +391,6 @@
             </svg>
           </button>
         </div>
-
-        <!-- Volume (hidden on small screens, shown on desktop) -->
         <div id="player-volume">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="vol-icon">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -236,25 +401,23 @@
             <path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/>
           </svg>
         </div>
-
-        <!-- Track queue preview -->
         <div id="player-queue">
           <p class="queue-label">Next up</p>
           <div id="queue-next-track">
             <span id="queue-next-title">—</span>
           </div>
         </div>
-
       </div>
     </div>
 
   </div><!-- /#app -->
 
-  <!-- Hidden audio element -->
   <audio id="audio-el" preload="metadata"></audio>
 
   <script src="js/api.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/library.js"></script>
+  <script src="js/search.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -1,90 +1,96 @@
 /**
  * ui.js — UI rendering and screen management for git-play
- * Handles navigation, album cards, track lists, library view
  */
 
 const UI = (() => {
 
-  // ── Screen Management ──
   const screens = {
     home:    document.getElementById('screen-home'),
+    search:  document.getElementById('screen-search'),
     library: document.getElementById('screen-library'),
     album:   document.getElementById('screen-album'),
+    liked:   document.getElementById('screen-liked'),
   };
 
-  const bottomNav    = document.getElementById('bottom-nav');
-  const btnBack      = document.getElementById('btn-back');
-  const topbarTitle  = document.getElementById('topbar-title');
+  const btnBack     = document.getElementById('btn-back');
+  const topbarTitle = document.getElementById('topbar-title');
 
-  let currentScreen = 'home';
-  let albumsData = []; // cache of index data for library
+  // Screens that hide the bottom nav buttons (slide-in screens)
+  const SLIDE_SCREENS = new Set(['album', 'liked']);
+  // Which main tab to go back to from a slide screen
+  let prevMainScreen = 'home';
+  let currentScreen  = 'home';
 
   // ── Navigation ──
   function showScreen(name, opts = {}) {
-    const prev = screens[currentScreen];
-    const next = screens[name];
+    if (!screens[name]) return;
 
-    if (!next) return;
+    if (!SLIDE_SCREENS.has(name)) {
+      prevMainScreen = name;
+    }
 
-    // Deactivate all
     Object.values(screens).forEach(s => s.classList.remove('active'));
-
-    // Activate target
-    next.classList.add('active');
+    screens[name].classList.add('active');
     currentScreen = name;
 
-    // Update nav buttons
+    // Nav highlight — only highlight main tabs
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.screen === name);
     });
 
-    // Back button & topbar
-    if (name === 'album') {
+    // Back button visible only on slide screens
+    if (SLIDE_SCREENS.has(name)) {
       btnBack.classList.remove('hidden');
-      topbarTitle.querySelector('.logo-text') &&
-        (topbarTitle.querySelector('.logo-text').style.display = 'none');
-      topbarTitle.innerHTML = `<span class="topbar-album-name">${opts.albumTitle || ''}</span>`;
+      topbarTitle.innerHTML = `<span class="topbar-album-name">${escHtml(opts.albumTitle || '')}</span>`;
     } else {
       btnBack.classList.add('hidden');
       topbarTitle.innerHTML = `<span class="logo-text">git<span class="accent">play</span></span>`;
     }
 
-    // Scroll to top
-    next.scrollTop = 0;
+    screens[name].scrollTop = 0;
   }
 
   function goBack() {
-    showScreen('home');
+    showScreen(prevMainScreen);
   }
 
-  // ── Render Album Grid ──
+  // ── Greeting ──
+  function setGreeting() {
+    const h = new Date().getHours();
+    const text =
+      h < 12 ? 'Good morning' :
+      h < 17 ? 'Good afternoon' :
+               'Good evening';
+    const el = document.getElementById('greeting-text');
+    if (el) el.textContent = text;
+  }
+
+  // ── Album Grid (Home) ──
   function renderAlbumGrid(albums) {
-    const grid = document.getElementById('album-grid');
+    const grid    = document.getElementById('album-grid');
     const loading = document.getElementById('home-loading');
+    const count   = document.getElementById('album-count');
 
     loading.classList.add('hidden');
     grid.innerHTML = '';
+    if (count) count.textContent = `${albums.length} album${albums.length !== 1 ? 's' : ''}`;
 
     if (!albums || albums.length === 0) {
       grid.innerHTML = '<p style="color:var(--text-3);padding:20px;grid-column:1/-1;text-align:center;">No albums found.</p>';
       return;
     }
 
-    albums.forEach(album => {
-      const card = createAlbumCard(album);
-      grid.appendChild(card);
-    });
+    albums.forEach(album => grid.appendChild(createAlbumCard(album)));
   }
 
   function createAlbumCard(album) {
     const card = document.createElement('div');
     card.className = 'album-card';
     card.setAttribute('role', 'button');
-    card.setAttribute('aria-label', `${album.title} by ${album.artist}`);
     card.tabIndex = 0;
 
     const coverHTML = album.cover
-      ? `<img class="album-card-cover" src="${album.cover}" alt="${album.title}" loading="lazy" />`
+      ? `<img class="album-card-cover" src="${album.cover}" alt="${escHtml(album.title)}" loading="lazy" />`
       : `<div class="album-card-cover-placeholder">♪</div>`;
 
     card.innerHTML = `
@@ -104,9 +110,49 @@ const UI = (() => {
     return card;
   }
 
-  // ── Render Album Page ──
+  // ── Recently Played ──
+  function renderRecents(recents, albums) {
+    const list    = document.getElementById('recents-list');
+    const section = document.getElementById('section-recents');
+    if (!list) return;
+
+    // recents = array of {albumId, trackFile} from localStorage
+    // Filter to only valid albums that are still in index
+    const albumMap = Object.fromEntries(albums.map(a => [a.id, a]));
+    const valid = recents
+      .map(r => albumMap[r.albumId])
+      .filter(Boolean)
+      // dedupe by id
+      .filter((a, i, arr) => arr.findIndex(x => x.id === a.id) === i)
+      .slice(0, 8);
+
+    if (valid.length === 0) {
+      list.innerHTML = '<p class="empty-hint" style="padding:4px 0;">Nothing yet — start playing something!</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    valid.forEach(album => {
+      const card = document.createElement('div');
+      card.className = 'recent-card';
+
+      const coverHTML = album.cover
+        ? `<img class="recent-card-cover" src="${album.cover}" alt="" loading="lazy" />`
+        : `<div class="recent-card-cover-placeholder">♪</div>`;
+
+      card.innerHTML = `
+        ${coverHTML}
+        <div class="recent-card-title">${escHtml(album.title)}</div>
+        <div class="recent-card-artist">${escHtml(album.artist)}</div>
+      `;
+
+      card.addEventListener('click', () => App.openAlbum(album));
+      list.appendChild(card);
+    });
+  }
+
+  // ── Album Page ──
   function renderAlbumPage(albumSummary, albumData) {
-    // Merge cover from summary into albumData
     albumData.coverUrl = albumSummary.cover;
 
     document.getElementById('album-title-text').textContent  = albumData.album;
@@ -122,14 +168,13 @@ const UI = (() => {
     renderTrackList(albumData);
     showScreen('album', { albumTitle: albumData.album });
 
-    // Play-all button
     document.getElementById('btn-play-all').onclick = () => {
       Player.loadAlbumQueue(albumData, 0);
     };
   }
 
   function renderTrackList(albumData) {
-    const list = document.getElementById('track-list');
+    const list    = document.getElementById('track-list');
     const loading = document.getElementById('album-loading');
     loading.classList.add('hidden');
     list.innerHTML = '';
@@ -137,7 +182,7 @@ const UI = (() => {
     const state = Player.getState();
 
     albumData.tracks.forEach((track, index) => {
-      const title = API.normalizeFilename(track.file);
+      const title     = API.normalizeFilename(track.file);
       const isPlaying = (
         state.currentAlbum &&
         state.currentAlbum.releaseTag === albumData.releaseTag &&
@@ -152,9 +197,7 @@ const UI = (() => {
         <div class="track-num">
           <span class="track-num-val">${track.track}</span>
           <div class="track-playing-bars" aria-hidden="true">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
           </div>
         </div>
         <div class="track-info">
@@ -167,8 +210,7 @@ const UI = (() => {
 
       item.addEventListener('click', () => {
         Player.loadAlbumQueue(albumData, index);
-        // Refresh track highlights
-        setTimeout(() => refreshTrackHighlights(), 50);
+        setTimeout(refreshTrackHighlights, 50);
       });
 
       list.appendChild(item);
@@ -177,62 +219,12 @@ const UI = (() => {
 
   function refreshTrackHighlights() {
     const state = Player.getState();
-    document.querySelectorAll('.track-item').forEach((el, i) => {
+    document.querySelectorAll('#track-list .track-item').forEach((el, i) => {
       el.classList.toggle('playing', i === state.currentIndex);
     });
   }
 
-  // ── Render Library ──
-  function renderLibrary(albums) {
-    albumsData = albums;
-    const list = document.getElementById('library-list');
-    list.innerHTML = '';
-    renderLibraryItems(albums, list);
-  }
-
-  function renderLibraryItems(albums, container) {
-    container.innerHTML = '';
-    if (!albums || albums.length === 0) {
-      container.innerHTML = '<p style="color:var(--text-3);padding:20px;text-align:center;">Nothing found.</p>';
-      return;
-    }
-
-    albums.forEach(album => {
-      const item = document.createElement('div');
-      item.className = 'library-item';
-
-      const coverHTML = album.cover
-        ? `<img class="library-item-cover" src="${album.cover}" alt="" loading="lazy" />`
-        : `<div class="library-item-cover-placeholder">♪</div>`;
-
-      item.innerHTML = `
-        ${coverHTML}
-        <div class="library-item-info">
-          <div class="library-item-title">${escHtml(album.title)}</div>
-          <div class="library-item-sub">${escHtml(album.artist)} · ${album.year || ''}</div>
-        </div>
-      `;
-
-      item.addEventListener('click', () => App.openAlbum(album));
-      container.appendChild(item);
-    });
-  }
-
-  function filterLibrary(query) {
-    const q = query.toLowerCase().trim();
-    const list = document.getElementById('library-list');
-    if (!q) {
-      renderLibraryItems(albumsData, list);
-      return;
-    }
-    const filtered = albumsData.filter(a =>
-      a.title.toLowerCase().includes(q) ||
-      a.artist.toLowerCase().includes(q)
-    );
-    renderLibraryItems(filtered, list);
-  }
-
-  // ── Loading States ──
+  // ── Loading / Error States ──
   function showHomeLoading() {
     document.getElementById('home-loading').classList.remove('hidden');
     document.getElementById('home-error').classList.add('hidden');
@@ -240,12 +232,9 @@ const UI = (() => {
   }
 
   function showHomeError(msg) {
-    const loading = document.getElementById('home-loading');
-    const error   = document.getElementById('home-error');
-    const errMsg  = document.getElementById('home-error-msg');
-    loading.classList.add('hidden');
-    error.classList.remove('hidden');
-    errMsg.textContent = msg || 'Could not load library.';
+    document.getElementById('home-loading').classList.add('hidden');
+    document.getElementById('home-error').classList.remove('hidden');
+    document.getElementById('home-error-msg').textContent = msg || 'Could not load library.';
   }
 
   function showAlbumLoading() {
@@ -256,15 +245,14 @@ const UI = (() => {
   // ── Utils ──
   function escHtml(str) {
     return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   // ── Init ──
   function init() {
-    // Nav buttons
+    setGreeting();
+
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = btn.dataset.screen;
@@ -272,12 +260,8 @@ const UI = (() => {
       });
     });
 
-    // Back button
     btnBack.addEventListener('click', goBack);
-
-    // Search input
-    const searchInput = document.getElementById('search-input');
-    searchInput.addEventListener('input', () => filterLibrary(searchInput.value));
+    Search.init();
   }
 
   return {
@@ -286,7 +270,7 @@ const UI = (() => {
     goBack,
     renderAlbumGrid,
     renderAlbumPage,
-    renderLibrary,
+    renderRecents,
     showHomeLoading,
     showHomeError,
     showAlbumLoading,

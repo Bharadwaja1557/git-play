@@ -108,19 +108,36 @@ const Player = (() => {
   }
 
   // ── Queue loading ──
-  function loadAlbumQueue(albumData, startIndex = 0) {
+  function loadAlbumQueue(albumData, startIndex = 0, opts = {}) {
     state.currentAlbum = albumData;
 
-    state.queue = albumData.tracks.map(t => ({
-      title:      API.normalizeFilename(t.file),
-      file:       t.file,
-      trackNum:   t.track,
-      albumTitle: albumData.album,
-      artist:     albumData.artist,
-      cover:      albumData.coverUrl, // set by UI layer
-      releaseTag: albumData.releaseTag,
-      audioUrl:   API.getAudioUrl(albumData.releaseTag, t.file),
-    }));
+    if (opts.prebuilt) {
+      // tracks already have all fields resolved (shuffle-all)
+      state.queue = albumData.tracks;
+    } else if (opts.isLiked) {
+      // liked songs — tracks have _prefixed resolved fields
+      state.queue = albumData.tracks.map(t => ({
+        title:      t._title,
+        file:       t._file || t.file,
+        trackNum:   t.track,
+        albumTitle: t._albumTitle,
+        artist:     t._artist,
+        cover:      t._cover,
+        releaseTag: t._releaseTag,
+        audioUrl:   t._audioUrl,
+      }));
+    } else {
+      state.queue = albumData.tracks.map(t => ({
+        title:      API.normalizeFilename(t.file),
+        file:       t.file,
+        trackNum:   t.track,
+        albumTitle: albumData.album,
+        artist:     albumData.artist,
+        cover:      albumData.coverUrl,
+        releaseTag: albumData.releaseTag,
+        audioUrl:   API.getAudioUrl(albumData.releaseTag, t.file),
+      }));
+    }
 
     playAt(startIndex);
   }
@@ -266,6 +283,14 @@ const Player = (() => {
     playerTrackArtist.textContent = track.artist;
     playerAlbumName.textContent   = track.albumTitle;
     if (track.cover) playerCover.src = track.cover;
+
+    // Update like button state
+    if (typeof Library !== 'undefined') Library.updateLikeButton();
+
+    // Track recent plays (skip synthetic queues)
+    if (typeof App !== 'undefined' && track.releaseTag && !track.releaseTag.startsWith('__')) {
+      App.addRecent(state.currentAlbum?.releaseTag || track.releaseTag, track.file);
+    }
   }
 
   function updateTrackHighlight() {
