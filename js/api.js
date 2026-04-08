@@ -1,143 +1,126 @@
 /**
  * api.js — Data fetching layer for git-play
- * Loads index.json and album JSON files from music-vault
- * Caches all data in localStorage to avoid repeat fetches
  */
 
 const API = (() => {
 
-  // ── Config ──
-  // These are URLs pointing at your music-vault GitHub Pages / raw content
   const CONFIG = {
-    // Base URL for your music-vault GitHub Pages site (served via GitHub Pages)
-    // index.json must be at this URL
-    vaultBase: 'https://Bharadwaja1557.github.io/music-vault',
-
-    // Cache TTL in milliseconds (6 hours)
-    cacheTTL: 6 * 60 * 60 * 1000,
-
-    // GitHub release base URL template
-    // {user}/{repo}/releases/download/{tag}/{filename}
-    releaseBase: 'https://github.com/Bharadwaja1557/music-vault/releases/download',
+    vaultBase:   'https://gajala-sonic-solutions.github.io/music-vault',
+    cacheTTL:    6 * 60 * 60 * 1000,
+    releaseBase: 'https://github.com/gajala-sonic-solutions/music-vault/releases/download',
   };
 
-  // ── Cache helpers ──
+  // ── Cache ──
   function cacheGet(key) {
     try {
       const raw = localStorage.getItem(`gp_${key}`);
       if (!raw) return null;
       const { ts, data } = JSON.parse(raw);
-      if (Date.now() - ts > CONFIG.cacheTTL) {
-        localStorage.removeItem(`gp_${key}`);
-        return null;
-      }
+      if (Date.now() - ts > CONFIG.cacheTTL) { localStorage.removeItem(`gp_${key}`); return null; }
       return data;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
   function cacheSet(key, data) {
-    try {
-      localStorage.setItem(`gp_${key}`, JSON.stringify({ ts: Date.now(), data }));
-    } catch {
-      // Storage full — silently skip caching
-    }
+    try { localStorage.setItem(`gp_${key}`, JSON.stringify({ ts: Date.now(), data })); } catch {}
   }
 
   function cacheClear() {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('gp_'));
-    keys.forEach(k => localStorage.removeItem(k));
+    Object.keys(localStorage).filter(k => k.startsWith('gp_')).forEach(k => localStorage.removeItem(k));
   }
 
-  // ── Fetch helpers ──
+  // ── Fetch ──
   async function fetchJSON(url) {
     const res = await fetch(url, { cache: 'default' });
     if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
     return res.json();
   }
 
-  // ── Public API ──
-
-  /**
-   * Load the album index.
-   * Returns array of album summary objects.
-   */
   async function loadIndex() {
     const cached = cacheGet('index');
     if (cached) return cached;
-
-    const url = `${CONFIG.vaultBase}/index.json`;
-    const data = await fetchJSON(url);
+    const data = await fetchJSON(`${CONFIG.vaultBase}/index.json`);
     cacheSet('index', data);
     return data;
   }
 
-  /**
-   * Load a single album's full data.
-   * @param {string} albumId — matches "id" in index.json
-   */
   async function loadAlbum(albumId) {
-    const cacheKey = `album_${albumId}`;
-    const cached = cacheGet(cacheKey);
+    const cached = cacheGet(`album_${albumId}`);
     if (cached) return cached;
-
-    const url = `${CONFIG.vaultBase}/albums/${albumId}.json`;
-    const data = await fetchJSON(url);
-    cacheSet(cacheKey, data);
+    const data = await fetchJSON(`${CONFIG.vaultBase}/albums/${albumId}.json`);
+    cacheSet(`album_${albumId}`, data);
     return data;
   }
 
-  /**
-   * Build a streaming URL for a release asset.
-   * @param {string} releaseTag
-   * @param {string} filename
-   */
   function getAudioUrl(releaseTag, filename) {
     return `${CONFIG.releaseBase}/${releaseTag}/${filename}`;
   }
 
   /**
-   * Normalize a GitHub release filename into a readable track title.
-   * GitHub replaces spaces with dots, so we reverse that.
+   * Parse a track filename into { title, singers }.
    *
-   * Algorithm:
-   *   1. Strip extension
-   *   2. Replace ".-." with " - "    (separator between parts)
-   *   3. Replace remaining dots with space
-   *   4. Strip leading track number (e.g. "01 ", "05 ")
-   *   5. Trim
+   * NEW format (recommended):
+   *   "01 - Song Name - Singer1, Singer2.m4a"
+   *   → GitHub stores as: "01.-.Song.Name.-.Singer1,.Singer2.m4a"
+   *   → { title: "Song Name", singers: "Singer1, Singer2" }
    *
-   * Examples:
-   *   "01.-.Title.Track.m4a"            → "Title Track"
-   *   "05.-.Run.Down.The.City.-.Monica.m4a" → "Run Down The City - Monica"
+   * OLD format (still supported):
+   *   "01.-.Song.Name.m4a"  or  "05.-.Run.Down.The.City.-.Monica.m4a"
+   *   → { title: "Song Name", singers: "" }
+   *   → { title: "Run Down The City - Monica", singers: "" }
+   *
+   * Detection: if the track JSON already has a `singers` field, use that
+   * directly and only parse the title from the filename.
    */
-  function normalizeFilename(filename) {
+  function parseSongFilename(filename) {
     // 1. Strip extension
     let name = filename.replace(/\.[^.]+$/, '');
 
-    // 2. Replace ".-." (dot-hyphen-dot) with placeholder, then restore as " - "
-    name = name.replace(/\.-\./g, '___SEP___');
+    // 2. Split on ".-." separator → parts
+    //    "01.-.Song.Name.-.Singer" → ["01", "Song.Name", "Singer"]
+    const parts = name.split(/\.-\./).map(p => p.replace(/\./g, ' ').trim());
 
-    // 3. Replace remaining dots with spaces
-    name = name.replace(/\./g, ' ');
+    // parts[0] is always the track number
+    if (parts.length === 1) {
+      // No separator at all — just a plain name
+      const title = parts[0].replace(/^\d{1,3}\s*/, '').trim();
+      return { title, singers: '' };
+    }
 
-    // 4. Restore separator
-    name = name.replace(/___SEP___/g, ' - ');
+    if (parts.length === 2) {
+      // Old format: "01 - Song Name"  (one separator)
+      // Could also be "Song Name - Singer" if no track number
+      const hasLeadingNum = /^\d{1,3}$/.test(parts[0]);
+      if (hasLeadingNum) {
+        return { title: parts[1], singers: '' };
+      } else {
+        // Treat as "Title - Singer" (no track number prefix)
+        return { title: parts[0], singers: parts[1] };
+      }
+    }
 
-    // 5. Strip leading track number: "01 - " or "01 "
-    name = name.replace(/^\d{1,3}\s*-\s*/, '').replace(/^\d{1,3}\s+/, '');
+    // 3+ parts: "01 - Song Name - Singers"  (new format)
+    // parts[0] = track number, parts[1] = title, parts[2...] = singers
+    const hasLeadingNum = /^\d{1,3}$/.test(parts[0]);
+    if (hasLeadingNum) {
+      const title   = parts[1];
+      const singers = parts.slice(2).join(' - ');
+      return { title, singers };
+    } else {
+      // No leading number: parts[0] = title, parts[1...] = singers
+      return { title: parts[0], singers: parts.slice(1).join(' - ') };
+    }
+  }
 
-    return name.trim();
+  /** Legacy helper — returns just the title string */
+  function normalizeFilename(filename) {
+    return parseSongFilename(filename).title;
   }
 
   return {
-    loadIndex,
-    loadAlbum,
-    getAudioUrl,
-    normalizeFilename,
-    cacheClear,
-    config: CONFIG,
+    loadIndex, loadAlbum, getAudioUrl,
+    parseSongFilename, normalizeFilename,
+    cacheClear, config: CONFIG,
   };
 
 })();

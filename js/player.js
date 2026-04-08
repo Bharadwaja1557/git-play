@@ -127,19 +127,33 @@ const Player = (() => {
         audioUrl:   t._audioUrl,
       }));
     } else {
-      state.queue = albumData.tracks.map(t => ({
-        title:      API.normalizeFilename(t.file),
-        file:       t.file,
-        trackNum:   t.track,
-        albumTitle: albumData.album,
-        artist:     albumData.artist,
-        cover:      albumData.coverUrl,
-        releaseTag: albumData.releaseTag,
-        audioUrl:   API.getAudioUrl(albumData.releaseTag, t.file),
-      }));
+      // When skipStashed is true, exclude stashed tracks from auto-play queue
+      // (they can still be played individually by clicking)
+      const tracksToQueue = opts.skipStashed && opts.stashedFiles
+        ? albumData.tracks.filter(t => !opts.stashedFiles.has(t.file))
+        : albumData.tracks;
+
+      state.queue = tracksToQueue.map(t => {
+        const parsed = t.title
+          ? { title: t.title, singers: t.singers || '' }
+          : API.parseSongFilename(t.file);
+        return {
+          title:      parsed.title,
+          singers:    parsed.singers,
+          file:       t.file,
+          trackNum:   t.track,
+          albumTitle: albumData.album,
+          artist:     albumData.artist,
+          cover:      albumData.coverUrl,
+          releaseTag: albumData.releaseTag,
+          audioUrl:   API.getAudioUrl(albumData.releaseTag, t.file),
+        };
+      });
     }
 
-    playAt(startIndex);
+    // Clamp startIndex in case it's now out of bounds after filtering
+    const safeIndex = Math.min(startIndex, Math.max(0, state.queue.length - 1));
+    playAt(safeIndex);
   }
 
   function playAt(index) {
@@ -222,12 +236,14 @@ const Player = (() => {
     state.isPlaying = true;
     setPlayIcons(true);
     playerCover.classList.add('playing');
+    document.getElementById('app').classList.remove('audio-paused');
   }
 
   function onPause() {
     state.isPlaying = false;
     setPlayIcons(false);
     playerCover.classList.remove('playing');
+    document.getElementById('app').classList.add('audio-paused');
   }
 
   function onEnded() {
@@ -280,7 +296,10 @@ const Player = (() => {
 
     // Full player
     playerTrackTitle.textContent  = track.title;
-    playerTrackArtist.textContent = track.artist;
+    // Show singers if available, otherwise fall back to album artist
+    playerTrackArtist.textContent = (track.singers && track.singers.trim())
+      ? track.singers
+      : track.artist;
     playerAlbumName.textContent   = track.albumTitle;
     if (track.cover) playerCover.src = track.cover;
 

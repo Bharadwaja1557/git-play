@@ -169,7 +169,8 @@ const UI = (() => {
     showScreen('album', { albumTitle: albumData.album });
 
     document.getElementById('btn-play-all').onclick = () => {
-      Player.loadAlbumQueue(albumData, 0);
+      const stashedFiles = Stash.getStashed(albumData.releaseTag);
+      Player.loadAlbumQueue(albumData, 0, { skipStashed: true, stashedFiles });
     };
   }
 
@@ -179,19 +180,42 @@ const UI = (() => {
     loading.classList.add('hidden');
     list.innerHTML = '';
 
-    const state = Player.getState();
+    const pState     = Player.getState();
+    const stashed    = Stash.getStashed(albumData.releaseTag);
 
-    albumData.tracks.forEach((track, index) => {
-      const title     = API.normalizeFilename(track.file);
+    // Split tracks: normal first (sorted by track#), stashed at bottom (sorted by track#)
+    const normal  = albumData.tracks.filter(t => !stashed.has(t.file));
+    const stashedTracks = albumData.tracks.filter(t =>  stashed.has(t.file));
+
+    // Build the effective play queue (only normal tracks, in order)
+    // Store mapping: effective queue index → original track index
+    const playQueue = normal; // skip stashed in auto-play
+
+    const renderTrack = (track, queueIndex, isStashedTrack) => {
+      const parsed    = track.title
+        ? { title: track.title, singers: track.singers || '' }
+        : API.parseSongFilename(track.file);
+      const title     = parsed.title;
+      const singers   = parsed.singers;
+
       const isPlaying = (
-        state.currentAlbum &&
-        state.currentAlbum.releaseTag === albumData.releaseTag &&
-        state.currentIndex === index
+        !isStashedTrack &&
+        pState.currentAlbum &&
+        pState.currentAlbum.releaseTag === albumData.releaseTag &&
+        pState.currentIndex === queueIndex
       );
 
+      const isLiked   = Library.isLiked({
+        releaseTag: albumData.releaseTag,
+        file:       track.file,
+      });
+
       const item = document.createElement('li');
-      item.className = `track-item${isPlaying ? ' playing' : ''}`;
-      item.dataset.index = index;
+      item.className = [
+        'track-item',
+        isPlaying     ? 'playing' : '',
+        isStashedTrack ? 'stashed' : '',
+      ].filter(Boolean).join(' ');
 
       item.innerHTML = `
         <div class="track-num">
@@ -202,19 +226,80 @@ const UI = (() => {
         </div>
         <div class="track-info">
           <div class="track-title">${escHtml(title)}</div>
+          ${singers ? `<div class="track-singers">${escHtml(singers)}</div>` : ''}
         </div>
-        <svg class="track-play-icon" viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="5 3 19 12 5 21 5 3"/>
-        </svg>
+        <div class="track-actions" onclick="event.stopPropagation()">
+          <button class="track-heart icon-btn sm ${isLiked ? 'liked' : ''}" aria-label="Like">
+            <svg viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+          </button>
+          <button class="track-dots icon-btn sm" aria-label="More options">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+            </svg>
+          </button>
+        </div>
       `;
 
+      // Click row → play
       item.addEventListener('click', () => {
-        Player.loadAlbumQueue(albumData, index);
-        setTimeout(refreshTrackHighlights, 50);
+        if (isStashedTrack) {
+          // Play stashed track directly (build a single-track queue override)
+          const fakeAlbum = {
+            ...albumData,
+            tracks: [track],
+            _stashedSingle: true,
+          };
+          Player.loadAlbumQueue(albumData, albumData.tracks.indexOf(track));
+        } else {
+          Player.loadAlbumQueue(albumData, queueIndex, { skipStashed: true, stashedFiles: stashed });
+          setTimeout(refreshTrackHighlights, 50);
+        }
+      });
+
+      // Heart button
+      item.querySelector('.track-heart').addEventListener('click', () => {
+        const trackObj = {
+          releaseTag: albumData.releaseTag,
+          file:       track.file,
+          title:      title,
+          artist:     albumData.artist,
+          albumTitle: albumData.album,
+          cover:      albumData.coverUrl,
+          singers:    singers,
+          audioUrl:   API.getAudioUrl(albumData.releaseTag, track.file),
+        };
+        const nowLiked = Library.toggleLike(trackObj);
+        const heartBtn = item.querySelector('.track-heart');
+        heartBtn.classList.toggle('liked', nowLiked);
+        heartBtn.querySelector('svg').setAttribute('fill', nowLiked ? 'currentColor' : 'none');
+      });
+
+      // 3-dots button → context menu
+      item.querySelector('.track-dots').addEventListener('click', (e) => {
+        ContextMenu.show({
+          x: e.clientX, y: e.clientY,
+          track, albumData, parsed,
+          isStashed: isStashedTrack,
+          onStashToggle: () => renderTrackList(albumData),
+        });
       });
 
       list.appendChild(item);
-    });
+    };
+
+    // Render normal tracks
+    normal.forEach((track, qi) => renderTrack(track, qi, false));
+
+    // Stash divider
+    if (stashedTracks.length > 0) {
+      const divider = document.createElement('li');
+      divider.className = 'stash-divider';
+      divider.innerHTML = `<span>Stashed</span>`;
+      list.appendChild(divider);
+      stashedTracks.forEach(track => renderTrack(track, -1, true));
+    }
   }
 
   function refreshTrackHighlights() {

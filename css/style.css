@@ -1685,3 +1685,233 @@ ul { list-style: none; }
   fill: #c8316e;
   stroke: #c8316e;
 }
+
+/* ============================================================
+   SINGERS, TRACK ACTIONS, STASH, EQ FREEZE, CONTEXT MENU
+   ============================================================ */
+
+/* ── EQ bars freeze on pause ── */
+/* When #app has .audio-paused, freeze the animation on the active track */
+#app.audio-paused .track-item.playing .bar {
+  animation-play-state: paused;
+}
+
+/* ── Track singers line ── */
+.track-singers {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
+
+.track-item.playing .track-singers {
+  color: rgba(200,169,110,0.55); /* muted gold — readable but doesn't compete */
+}
+
+/* ── Track action buttons (heart + 3-dots) ── */
+.track-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Remove old track-play-icon since actions replace it */
+.track-play-icon { display: none; }
+
+.track-heart {
+  color: var(--text-3);
+  transition: color 0.15s;
+}
+
+.track-heart.liked {
+  color: #c8316e;
+}
+
+.track-heart.liked svg {
+  fill: #c8316e;
+  stroke: #c8316e;
+}
+
+.track-heart:hover { color: #c8316e; }
+
+.track-dots {
+  color: var(--text-3);
+  transition: color 0.15s;
+}
+
+.track-dots:hover { color: var(--text-2); }
+
+/* ── Stashed tracks ── */
+.track-item.stashed {
+  opacity: 0.38;
+}
+
+.track-item.stashed .track-title {
+  color: var(--text-2);
+}
+
+.track-item.stashed .track-num {
+  color: var(--text-3);
+}
+
+/* Stash section divider */
+.stash-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px 6px;
+  list-style: none;
+}
+
+.stash-divider span {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stash-divider::before,
+.stash-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Context Menu (bottom sheet) ── */
+#ctx-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+#ctx-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#ctx-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  background: var(--bg-1);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border-top: 1px solid var(--border);
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 16px);
+  transform: translateY(100%);
+  transition: transform 0.32s var(--ease-out-expo);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+#ctx-sheet.visible {
+  transform: translateY(0);
+}
+
+.ctx-handle-bar {
+  width: 36px;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  margin: 12px auto 4px;
+}
+
+.ctx-track-info {
+  padding: 12px 20px 4px;
+}
+
+.ctx-track-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ctx-track-sub {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.ctx-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 13px 20px;
+  font-size: 0.95rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.ctx-item:active { background: var(--bg-2); }
+
+.ctx-item-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+
+.ctx-item-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ctx-item-disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ctx-badge {
+  font-size: 0.65rem;
+  background: var(--bg-3);
+  color: var(--text-3);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+@media (min-width: 600px) {
+  #ctx-sheet {
+    max-width: 420px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  #ctx-sheet.visible {
+    transform: translateX(-50%) translateY(0);
+  }
+}

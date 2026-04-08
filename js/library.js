@@ -256,3 +256,34 @@ const Library = (() => {
   };
 
 })();
+
+// ══════════════════════════════════════════════
+// STASH — songs you love but don't want in auto-play
+// ══════════════════════════════════════════════
+
+const Stash = (() => {
+
+  function _key(releaseTag) { return `gp_stash_${releaseTag}`; }
+
+  function getStashed(releaseTag) {
+    try { return new Set(JSON.parse(localStorage.getItem(_key(releaseTag)) || '[]')); }
+    catch { return new Set(); }
+  }
+
+  function save(releaseTag, set) {
+    localStorage.setItem(_key(releaseTag), JSON.stringify([...set]));
+  }
+
+  function isStashed(releaseTag, filename) {
+    return getStashed(releaseTag).has(filename);
+  }
+
+  function toggle(releaseTag, filename) {
+    const set = getStashed(releaseTag);
+    if (set.has(filename)) { set.delete(filename); } else { set.add(filename); }
+    save(releaseTag, set);
+    return set.has(filename); // true = now stashed
+  }
+
+  return { isStashed, toggle, getStashed };
+})();
