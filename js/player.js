@@ -282,11 +282,6 @@ const Player = (() => {
 
   function showMiniPlayer() {
     miniPlayer.classList.remove('hidden');
-    // Remove inline position override if it was set
-    miniPlayer.style.position = '';
-    miniPlayer.style.bottom = '';
-    miniPlayer.style.left = '';
-    miniPlayer.style.right = '';
   }
 
   // ── Expand / Collapse ──
