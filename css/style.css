@@ -1915,3 +1915,63 @@ ul { list-style: none; }
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* ============================================================
+   SINGER PILLS · REBUILD BUTTON
+   ============================================================ */
+
+/* ── Singer name pills ── */
+.track-singers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+/* Override the old single-line rule if it exists */
+.track-singers {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  font-weight: 300;
+}
+
+.singer-name {
+  display: inline-block;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 100px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.track-item.playing .singer-name {
+  background: rgba(200,169,110,0.1);
+  border-color: rgba(200,169,110,0.2);
+  color: rgba(200,169,110,0.6);
+}
+
+/* ── Rebuild button ── */
+.rebuild-btn {
+  color: var(--text-3);
+  transition: color 0.2s;
+  width: 36px;
+  height: 36px;
+}
+
+.rebuild-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rebuild-btn:hover {
+  color: var(--accent);
+}
+
+.rebuild-btn.spinning svg {
+  animation: spin 0.6s linear infinite;
+}
+
+/* spin keyframe already defined as @keyframes spin for the loading spinner */

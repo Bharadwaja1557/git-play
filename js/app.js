@@ -14,6 +14,28 @@ const App = (() => {
     Player.init();
     await loadIndex();
     bindHomeActions();
+    bindRebuildButton();
+  }
+
+  // ── Rebuild (clear cache + reload) ──
+  function bindRebuildButton() {
+    const btn = document.getElementById('btn-rebuild');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      // Spin the icon while confirming
+      btn.classList.add('spinning');
+      const confirmed = confirm('Clear all cached data and reload?\nThe app will re-fetch everything fresh from the vault.');
+      if (!confirmed) {
+        btn.classList.remove('spinning');
+        return;
+      }
+      // Wipe all gp_ keys from localStorage
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('gp_'))
+        .forEach(k => localStorage.removeItem(k));
+      // Hard reload (bypass browser cache)
+      location.reload(true);
+    });
   }
 
   // ── Load index ──

@@ -226,7 +226,9 @@ const UI = (() => {
         </div>
         <div class="track-info">
           <div class="track-title">${escHtml(title)}</div>
-          ${singers ? `<div class="track-singers">${escHtml(singers)}</div>` : ''}
+          ${singers ? `<div class="track-singers">${
+            singers.split(',').map(s => `<span class="singer-name">${escHtml(s.trim())}</span>`).join('')
+          }</div>` : ''}
         </div>
         <div class="track-actions" onclick="event.stopPropagation()">
           <button class="track-heart icon-btn sm ${isLiked ? 'liked' : ''}" aria-label="Like">
