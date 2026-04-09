@@ -59,57 +59,79 @@ const API = (() => {
   /**
    * Parse a track filename into { title, singers }.
    *
-   * NEW format (recommended):
-   *   "01 - Song Name - Singer1, Singer2.m4a"
-   *   → GitHub stores as: "01.-.Song.Name.-.Singer1,.Singer2.m4a"
-   *   → { title: "Song Name", singers: "Singer1, Singer2" }
+   * ── NEW format (v2) ──────────────────────────────────────────
+   *   Naming:  "01 -- Song Name -- Singer 1 & Singer 2.m4a"
+   *   GitHub:  "01.--.Song.Name.--.Singer.1.&.Singer.2.m4a"
+   *   Result:  { title: "Song Name", singers: ["Singer 1", "Singer 2"] }
    *
-   * OLD format (still supported):
-   *   "01.-.Song.Name.m4a"  or  "05.-.Run.Down.The.City.-.Monica.m4a"
-   *   → { title: "Song Name", singers: "" }
-   *   → { title: "Run Down The City - Monica", singers: "" }
+   *   Key decisions:
+   *   • "--" (double hyphen) as field separator → survives as ".__." in filenames
+   *     and cannot appear inside a song title naturally
+   *   • "&" as singer separator → survives GitHub upload unchanged,
+   *     easy to read, unambiguous
+   *   • Song title CAN contain " - " (single hyphen) freely, e.g.
+   *     "Run Down The City - Monica" is just the title, no confusion
    *
-   * Detection: if the track JSON already has a `singers` field, use that
-   * directly and only parse the title from the filename.
+   * ── OLD format (v1, still parsed for backwards compat) ─────────
+   *   "01.-.Song.Name.-.Singer.m4a"
+   *   Treated as: if exactly 3 parts → last part = singer
+   *               if 2 parts → no singer
+   *
+   * ── Returns ─────────────────────────────────────────────────────
+   *   { title: string, singers: string[] }
+   *   singers is always an array (empty if none)
    */
   function parseSongFilename(filename) {
-    // 1. Strip extension
-    let name = filename.replace(/\.[^.]+$/, '');
+    // Strip extension
+    const name = filename.replace(/\.[^.]+$/, '');
 
-    // 2. Split on ".-." separator → parts
-    //    "01.-.Song.Name.-.Singer" → ["01", "Song.Name", "Singer"]
+    // ── Try v2 format first: split on ".--." ──
+    if (name.includes('.--.')){
+      const parts = name.split(/\.--\./).map(p => p.replace(/\./g, ' ').trim());
+      const hasNum = /^\d{1,3}$/.test(parts[0]);
+      const titleIdx  = hasNum ? 1 : 0;
+      const singersRaw = hasNum ? parts.slice(2) : parts.slice(1);
+
+      const title   = parts[titleIdx] || '';
+      const singers = singersRaw.length > 0
+        ? singersRaw.join(' ').split(/\s*&\s*/).map(s => s.trim()).filter(Boolean)
+        : [];
+
+      return { title, singers };
+    }
+
+    // ── Fall back to v1 format: split on ".-." ──
     const parts = name.split(/\.-\./).map(p => p.replace(/\./g, ' ').trim());
 
-    // parts[0] is always the track number
-    if (parts.length === 1) {
-      // No separator at all — just a plain name
-      const title = parts[0].replace(/^\d{1,3}\s*/, '').trim();
-      return { title, singers: '' };
+    if (parts.length <= 1) {
+      // No separator — just strip leading track number
+      return { title: parts[0].replace(/^\d{1,3}\s*-?\s*/, '').trim(), singers: [] };
     }
+
+    const hasNum = /^\d{1,3}$/.test(parts[0]);
 
     if (parts.length === 2) {
-      // Old format: "01 - Song Name"  (one separator)
-      // Could also be "Song Name - Singer" if no track number
-      const hasLeadingNum = /^\d{1,3}$/.test(parts[0]);
-      if (hasLeadingNum) {
-        return { title: parts[1], singers: '' };
-      } else {
-        // Treat as "Title - Singer" (no track number prefix)
-        return { title: parts[0], singers: parts[1] };
-      }
+      // "01 - Title" → no singers
+      return {
+        title:   hasNum ? parts[1] : parts[0],
+        singers: hasNum ? [] : [parts[1]],
+      };
     }
 
-    // 3+ parts: "01 - Song Name - Singers"  (new format)
-    // parts[0] = track number, parts[1] = title, parts[2...] = singers
-    const hasLeadingNum = /^\d{1,3}$/.test(parts[0]);
-    if (hasLeadingNum) {
-      const title   = parts[1];
-      const singers = parts.slice(2).join(' - ');
-      return { title, singers };
-    } else {
-      // No leading number: parts[0] = title, parts[1...] = singers
-      return { title: parts[0], singers: parts.slice(1).join(' - ') };
+    // 3+ parts in v1: "01 - Title - Singer" → last segment = singer
+    // But we join the middle segments to handle "01 - Part1 - Part2 - Singer"
+    // by trusting generate.js to have pre-split title/singers correctly in JSON
+    if (hasNum) {
+      return {
+        title:   parts.slice(1, -1).join(' - '),
+        singers: [parts[parts.length - 1]],
+      };
     }
+
+    return {
+      title:   parts[0],
+      singers: parts.slice(1),
+    };
   }
 
   /** Legacy helper — returns just the title string */

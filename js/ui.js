@@ -193,10 +193,10 @@ const UI = (() => {
 
     const renderTrack = (track, queueIndex, isStashedTrack) => {
       const parsed    = track.title
-        ? { title: track.title, singers: track.singers || '' }
+        ? { title: track.title, singers: _toSingersArray(track.singers) }
         : API.parseSongFilename(track.file);
       const title     = parsed.title;
-      const singers   = parsed.singers;
+      const singers   = Array.isArray(parsed.singers) ? parsed.singers : _toSingersArray(parsed.singers);
 
       const isPlaying = (
         !isStashedTrack &&
@@ -226,8 +226,8 @@ const UI = (() => {
         </div>
         <div class="track-info">
           <div class="track-title">${escHtml(title)}</div>
-          ${singers ? `<div class="track-singers">${
-            singers.split(',').map(s => `<span class="singer-name">${escHtml(s.trim())}</span>`).join('')
+          ${singers && singers.length > 0 ? `<div class="track-singers">${
+            singers.map(s => `<span class="singer-name">${escHtml(s)}</span>`).join('')
           }</div>` : ''}
         </div>
         <div class="track-actions" onclick="event.stopPropagation()">
@@ -349,6 +349,14 @@ const UI = (() => {
 
     btnBack.addEventListener('click', goBack);
     Search.init();
+  }
+
+  // Convert singers field (string or array) to a clean array
+  function _toSingersArray(singers) {
+    if (!singers) return [];
+    if (Array.isArray(singers)) return singers.map(s => s.trim()).filter(Boolean);
+    // String: split on & or comma
+    return singers.split(/\s*[&,]\s*/).map(s => s.trim()).filter(Boolean);
   }
 
   return {

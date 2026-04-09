@@ -1975,3 +1975,80 @@ ul { list-style: none; }
 }
 
 /* spin keyframe already defined as @keyframes spin for the loading spinner */
+
+/* ============================================================
+   FLAC MODE TOGGLE + BADGE
+   ============================================================ */
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The toggle button */
+.flac-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.flac-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  transition: color 0.2s;
+}
+
+.flac-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+/* Active (FLAC mode ON) */
+.flac-toggle.flac-on {
+  background: rgba(200,169,110,0.12);
+  border-color: rgba(200,169,110,0.4);
+}
+
+.flac-toggle.flac-on .flac-label {
+  color: var(--accent);
+}
+
+.flac-toggle.flac-on .flac-dot {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Badge shown in topbar when FLAC is active and playing */
+.flac-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  color: #0a0a0a;
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s, transform 0.2s var(--ease-spring);
+  pointer-events: none;
+}
+
+.flac-badge.visible {
+  opacity: 1;
+  transform: scale(1);
+}

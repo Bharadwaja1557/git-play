@@ -15,9 +15,31 @@ const App = (() => {
     await loadIndex();
     bindHomeActions();
     bindRebuildButton();
+    bindFlacButton();
   }
 
   // ── Rebuild (clear cache + reload) ──
+  function bindFlacButton() {
+    const btn = document.getElementById('btn-flac');
+    if (!btn) return;
+
+    // Set initial state from player
+    const updateFlacBtn = () => {
+      const on = Player.getFlacMode();
+      btn.classList.toggle('flac-on', on);
+      btn.title = on ? 'FLAC mode ON — tap to switch to M4A' : 'M4A mode — tap to switch to FLAC';
+    };
+    updateFlacBtn();
+
+    btn.addEventListener('click', () => {
+      const nowOn = Player.toggleFlacMode();
+      btn.classList.toggle('flac-on', nowOn);
+      btn.title = nowOn ? 'FLAC mode ON — tap to switch to M4A' : 'M4A mode — tap to switch to FLAC';
+      // Quick visual feedback
+      btn.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 200 });
+    });
+  }
+
   function bindRebuildButton() {
     const btn = document.getElementById('btn-rebuild');
     if (!btn) return;

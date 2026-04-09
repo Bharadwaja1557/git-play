@@ -7,13 +7,14 @@ const Player = (() => {
 
   // ── State ──
   const state = {
-    queue: [],          // Array of track objects
+    queue: [],
     currentIndex: -1,
     isPlaying: false,
     shuffle: false,
     repeat: false,      // false | 'one' | 'all'
-    currentAlbum: null, // The full album object currently in queue
+    currentAlbum: null,
     expanded: false,
+    flacMode: localStorage.getItem('gp_flac_mode') === 'true',
   };
 
   // ── Elements ──
@@ -135,18 +136,22 @@ const Player = (() => {
 
       state.queue = tracksToQueue.map(t => {
         const parsed = t.title
-          ? { title: t.title, singers: t.singers || '' }
+          ? { title: t.title, singers: typeof t.singers === 'string'
+              ? t.singers.split(/\s*&\s*/).map(s => s.trim()).filter(Boolean)
+              : (t.singers || []) }
           : API.parseSongFilename(t.file);
         return {
           title:      parsed.title,
-          singers:    parsed.singers,
+          singers:    Array.isArray(parsed.singers) ? parsed.singers : [],
           file:       t.file,
+          flacFile:   t.flac || null,
           trackNum:   t.track,
           albumTitle: albumData.album,
           artist:     albumData.artist,
           cover:      albumData.coverUrl,
           releaseTag: albumData.releaseTag,
           audioUrl:   API.getAudioUrl(albumData.releaseTag, t.file),
+          flacUrl:    t.flac ? API.getAudioUrl(albumData.releaseTag, t.flac) : null,
         };
       });
     }
@@ -161,10 +166,15 @@ const Player = (() => {
     state.currentIndex = index;
     const track = state.queue[index];
 
-    audio.src = track.audioUrl;
+    // Use FLAC URL if flac mode is on AND a flac file exists for this track
+    const useFlac = state.flacMode && track.flacUrl;
+    audio.src = useFlac ? track.flacUrl : track.audioUrl;
     audio.preload = 'metadata';
     audio.load();
     audio.play().catch(err => console.warn('Autoplay blocked:', err));
+
+    // Show FLAC badge in topbar if in flac mode
+    _updateFlacBadge(useFlac);
 
     showMiniPlayer();
     updateUI();
@@ -355,6 +365,34 @@ const Player = (() => {
     return `${m}:${s}`;
   }
 
+  // ── FLAC mode ──
+  function toggleFlacMode() {
+    state.flacMode = !state.flacMode;
+    localStorage.setItem('gp_flac_mode', state.flacMode);
+
+    // If something is playing, reload it in the new format
+    if (state.currentIndex >= 0 && !audio.paused) {
+      const pos = audio.currentTime;
+      const track = state.queue[state.currentIndex];
+      const useFlac = state.flacMode && track.flacUrl;
+      audio.src = useFlac ? track.flacUrl : track.audioUrl;
+      audio.load();
+      audio.addEventListener('loadedmetadata', () => {
+        audio.currentTime = pos;
+        audio.play().catch(console.warn);
+      }, { once: true });
+    }
+
+    _updateFlacBadge(state.flacMode && state.queue[state.currentIndex]?.flacUrl);
+    return state.flacMode;
+  }
+
+  function _updateFlacBadge(active) {
+    let badge = document.getElementById('flac-badge');
+    if (!badge) return;
+    badge.classList.toggle('visible', !!active);
+  }
+
   // ── Expose ──
   return {
     init,
@@ -365,6 +403,8 @@ const Player = (() => {
     prevTrack,
     expandPlayer,
     collapsePlayer,
+    toggleFlacMode,
+    getFlacMode: () => state.flacMode,
     getState: () => state,
   };
 
